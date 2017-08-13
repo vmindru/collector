@@ -16,16 +16,15 @@ def collect_arguments():
     parser.description = 'collector: collects and sends stats to carbon'
 
     parser.add_argument('-m', '--metric', required=True, help='OID where to store data')
-    parser.add_argument('-c', '--command', required=True, help='command to execute')
     parser.add_argument('-V', '--verbose', action='store_true', help='print data to stdout before sending to server')
     parser.add_argument('-s', '--server', required=True, help='carbon server address')
     parser.add_argument('-p', '--port', default=2003, help='carbon server port, default 2003')
-    parser.add_argument('-D', '--daemon', default=5, type=int, nargs='?', help='run as daemon with default interval of '
-                        '5 seconds, specifing a value will make the dameon run with specified interval')
+    parser.add_argument('-D', '--daemon', action='store_true', help='run as daemon, sends data at regular intervals')
+    parser.add_argument('-i', '--interval', default=5, help='interval to send data in daemon mode, defaults 5s')
 
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-t', '--time', action='store_true', help='send command time execution as metric to carbon')
-    group.add_argument('-d', '--data', action='store_true', help='send command data to carbon, must be integer, float')
+    group.add_argument('-c', '--value', required=True, help='metric value to send')
+    group.add_argument('-p', '--plugin', default=False,  help='call plugin to collect metric data')
     parser.epilog = 'default OID will be formed hostname.stats.command.[time|data], where hostname is taken from system\
                     hostname stats is static string, command is the command name passed with -c flag and time or data \
                     depending on the execution mode -t or -d'
@@ -45,20 +44,22 @@ def get_command_output(command):
     return data
 
 
-def send_data(metric, data, server, port, verbose):
+def send_data(metric, data, server, port, verbose=False):
     if verbose:
-        print "{0} {1} {2}".format(metric, data)
+        print "{0} {1}".format(metric, data)
     else:
-        print "sending {0} {1} {2}".format(metric, data)
+        print "sending {0} {1}".format(metric, data)
 
 
-def get_data(args):
-    if args.time is True:
-        data = str(measure_command_time(args.command))
-    elif args.data is True:
-        data = str(get_command_output(args.command))
+def include_plugin():
+    pass
+
+
+def create_data(args):
+    if args.plugin is True:
+        include_plugin()
     else:
-        raise 'Something really bad happend, could not get command data'
+        data = args.value
     return data
 
 
@@ -74,9 +75,13 @@ def get_mode(args):
 
 def main():
     args = collect_arguments()
-    data = get_data(args)
-    send_data(args.metric, data, args.server, args.port, args.verbose)
-
+    if args.daemon:
+        while True:
+            data = create_data(args)
+            send_data(args.metric, data, args.server, args.port, args.verbose)
+    else:
+        data = create_data(args)
+        send_data(args.metric, data, args.server, args.port, args.verbose)
 
 
 if __name__ == "__main__": main()  # noqa allow 2 satements on the same line
