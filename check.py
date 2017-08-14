@@ -2,7 +2,8 @@
 
 import commands
 from argparse import ArgumentParser
-from time import time,sleep
+from time import time
+from time import sleep
 import platform
 import socket
 
@@ -26,7 +27,8 @@ def collect_arguments():
     parser.add_argument('-s', '--server', required=True, help='carbon server address')
     parser.add_argument('-p', '--port', default=2003, help='carbon server port, default 2003')
     parser.add_argument('-D', '--daemon', action='store_true', help='run as daemon, sends data at regular intervals')
-    parser.add_argument('-i', '--interval', type=float, default=5.0, help='interval to send data in daemon mode, defaults 5s')
+    parser.add_argument('-i', '--interval', type=float, default=5.0, help='interval to send data in daemon mode, \
+                        defaults 5s')
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-c', '--value', type=int_or_float,  help='metric value to send, must be int or float ')
@@ -48,7 +50,7 @@ def send_data(metric, data, server, port, retry_interval=5, verbose=False):
     while True:
         try:
             sock.connect((server, port))
-            sock.sendall(send_data+'\n') # note we need to append end of line at the end off the message
+            sock.sendall(send_data+'\n')  # note we need to append end of line at the end off the message
             if verbose:
                 print "sent data: {0} to {1} {2}".format(send_data, server, port)
             break
@@ -57,7 +59,7 @@ def send_data(metric, data, server, port, retry_interval=5, verbose=False):
             sleep(float(retry_interval))
     print "closing socket"
     sock.close()
-    
+
 
 def include_plugin():
     pass
@@ -66,7 +68,7 @@ def include_plugin():
 def create_carbon_data(metric, data):
 
     def _validate_metric(metric):
-        """ validates metric format 
+        """ validates metric format
             not yet implemented
 
         Args:
@@ -76,19 +78,18 @@ def create_carbon_data(metric, data):
         Raises:
             ValueError
         """
-        return metric 
+        return metric
 
-    """ creates data to be sent to carbon server 
+    """ creates data to be sent to carbon server
 
-    Args: 
+    Args:
         metric (str): carbon metric path http://graphite.readthedocs.io/en/latest/feeding-carbon.html
-        data (int|float): data for the metric 
+        data (int|float): data for the metric
 
     Returns:
-        metric (str): returns <metric path> <metric value> <metric timestamp> 
+        metric (str): returns <metric path> <metric value> <metric timestamp>
     """
     return "{0} {1} {2}".format(_validate_metric(metric), data,  int(time()))
-
 
 
 def create_data(args):
@@ -118,7 +119,7 @@ def main():
             sleep(args.interval)
     else:
         data = create_data(args)
-        send_data(args.metric, data, args.server, args.port, args.interval, rgs.verbose)
+        send_data(args.metric, data, args.server, args.port, args.verbose)
 
 
 if __name__ == "__main__": main()  # noqa allow 2 satements on the same line
