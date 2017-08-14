@@ -2,12 +2,18 @@
 
 import commands
 from argparse import ArgumentParser
-from time import time
+from time import time,sleep
 import platform
+import socket
 
 
 VERSION = "0.1"
 hostname = str(platform.node())
+
+
+def int_or_float(value):
+    """ returns value if value is int or float , TBI """
+    return value
 
 
 def collect_arguments():
@@ -23,7 +29,7 @@ def collect_arguments():
     parser.add_argument('-i', '--interval', default=5, help='interval to send data in daemon mode, defaults 5s')
 
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-c', '--value',  help='metric value to send')
+    group.add_argument('-c', '--value', type=int_or_float,  help='metric value to send, must be int or float ')
     group.add_argument('-P', '--plugin', default=False,  help='call plugin to collect metric data')
     parser.epilog = 'default OID will be formed hostname.stats.command.[time|data], where hostname is taken from system\
                     hostname stats is static string, command is the command name passed with -c flag and time or data \
@@ -32,27 +38,57 @@ def collect_arguments():
     return args
 
 
-def measure_command_time(command):
-    start = time()
-    commands.getstatus(command)
-    end = time()
-    return end-start
-
-
 def get_command_output(command):
     data = commands.getoutput(command)
     return data
 
 
-def send_data(metric, data, server, port, verbose=False):
-    if verbose:
-        print "{0} {1}".format(metric, data)
-    else:
-        print "sending {0} {1}".format(metric, data)
-
+def send_data(metric, data, server, port, retry_interval=5, verbose=False):
+    send_data = create_carbon_data(metric, data)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    while True:
+        try:
+            sock.connect((server, port))
+            sock.send(send_data)
+            if verbose:
+                print "sent data: {0} {1} to {2} {3}".format(metric, data, server, port)
+            break
+        except socket.error:
+            print "Could not connect to {0}:{1}, retrying".format(server, port)
+            sleep(retry_interval)
+    sock.close()
+    
 
 def include_plugin():
     pass
+
+
+def create_carbon_data(metric, data):
+
+    def _validate_metric(metric):
+        """ validates metric format 
+            not yet implemented
+
+        Args:
+            metric (str): carbon metric path http://graphite.readthedocs.io/en/latest/feeding-carbon.html
+        Returns:
+            metric (str): carbon metric path http://graphite.readthedocs.io/en/latest/feeding-carbon.html
+        Raises:
+            ValueError
+        """
+        return metric 
+
+    """ creates data to be sent to carbon server 
+
+    Args: 
+        metric (str): carbon metric path http://graphite.readthedocs.io/en/latest/feeding-carbon.html
+        data (int|float): data for the metric 
+
+    Returns:
+        metric (str): returns <metric path> <metric value> <metric timestamp> 
+    """
+    return "{0} {1} {2}".format(_validate_metric(metric), data,  int(time()))
+
 
 
 def create_data(args):
@@ -78,10 +114,11 @@ def main():
     if args.daemon:
         while True:
             data = create_data(args)
-            send_data(args.metric, data, args.server, args.port, args.verbose)
+            send_data(args.metric, data, args.server, args.port, args.interval, args.verbose)
+            sleep(args.interval)
     else:
         data = create_data(args)
-        send_data(args.metric, data, args.server, args.port, args.verbose)
+        send_data(args.metric, data, args.server, args.port, args.interval, rgs.verbose)
 
 
 if __name__ == "__main__": main()  # noqa allow 2 satements on the same line
