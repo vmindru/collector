@@ -1,16 +1,12 @@
 #!/usr/bin/python
 
+import socket
 import commands
 from argparse import ArgumentParser
 from time import time
 from time import sleep
 from os import path
-import platform
-import socket
-
-
-VERSION = "0.1"
-hostname = str(platform.node())
+from __version__ import VERSION
 
 
 def int_or_float(value):
@@ -20,16 +16,17 @@ def int_or_float(value):
 
 def collect_arguments():
     parser = ArgumentParser()
-    parser.prog = "collector"
+    parser.prog = "pycollect"
     parser.description = 'collector: collects and sends stats to carbon'
 
-    parser.add_argument('-m', '--metric', required=True, help='OID where to store data')
+    parser.add_argument('-m', '--metric', required=True, help='metric path where to store data')
     parser.add_argument('-V', '--verbose', action='store_true', help='print data to stdout before sending to server')
     parser.add_argument('-s', '--server', required=True, help='carbon server address')
     parser.add_argument('-p', '--port', default=2003, help='carbon server port, default 2003')
     parser.add_argument('-D', '--daemon', action='store_true', help='run as daemon, sends data at regular intervals')
     parser.add_argument('-i', '--interval', type=float, default=5.0, help='interval to send data in daemon mode, \
                         defaults 5s')
+    parser.add_argument('--version', action='version', version='%(prog)s '+VERSION)
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-c', '--value', default=False, type=int_or_float,  help='metric value to send, must be int or \
