@@ -20,7 +20,5 @@
           -P PLUGIN, --plugin PLUGIN
                                 call plugin to collect metric data
         
-        default OID will be formed hostname.stats.command.[time|data], where hostname
-        is taken from system hostname stats is static string, command is the command
-        name passed with -c flag and time or data depending on the execution mode -t
-        or -d
+        metric must be in standard collectd format e.g.
+        hostname.stats.command.[time|data]
