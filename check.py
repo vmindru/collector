@@ -31,9 +31,7 @@ def collect_arguments():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-c', '--value', type=int_or_float,  help='metric value to send, must be int or float ')
     group.add_argument('-P', '--plugin', default=False,  help='call plugin to collect metric data')
-    parser.epilog = 'default OID will be formed hostname.stats.command.[time|data], where hostname is taken from system\
-                    hostname stats is static string, command is the command name passed with -c flag and time or data \
-                    depending on the execution mode -t or -d'
+    parser.epilog = 'metric must be in standard collectd format e.g.  hostname.stats.command.[time|data]'
     args = parser.parse_args()
     return args
 
