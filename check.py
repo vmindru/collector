@@ -26,7 +26,7 @@ def collect_arguments():
     parser.add_argument('-s', '--server', required=True, help='carbon server address')
     parser.add_argument('-p', '--port', default=2003, help='carbon server port, default 2003')
     parser.add_argument('-D', '--daemon', action='store_true', help='run as daemon, sends data at regular intervals')
-    parser.add_argument('-i', '--interval', default=5, help='interval to send data in daemon mode, defaults 5s')
+    parser.add_argument('-i', '--interval', type=float, default=5.0, help='interval to send data in daemon mode, defaults 5s')
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-c', '--value', type=int_or_float,  help='metric value to send, must be int or float ')
@@ -45,17 +45,19 @@ def get_command_output(command):
 
 def send_data(metric, data, server, port, retry_interval=5, verbose=False):
     send_data = create_carbon_data(metric, data)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock = socket.socket()
+    print "creating socket"
     while True:
         try:
             sock.connect((server, port))
-            sock.send(send_data)
+            sock.sendall(send_data+'\n') # note we need to append end of line at the end off the message
             if verbose:
-                print "sent data: {0} {1} to {2} {3}".format(metric, data, server, port)
+                print "sent data: {0} to {1} {2}".format(send_data, server, port)
             break
         except socket.error:
             print "Could not connect to {0}:{1}, retrying".format(server, port)
-            sleep(retry_interval)
+            sleep(float(retry_interval))
+    print "closing socket"
     sock.close()
     
 
