@@ -4,6 +4,7 @@ import commands
 from argparse import ArgumentParser
 from time import time
 from time import sleep
+from os import path
 import platform
 import socket
 
@@ -31,10 +32,14 @@ def collect_arguments():
                         defaults 5s')
 
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-c', '--value', type=int_or_float,  help='metric value to send, must be int or float ')
+    group.add_argument('-c', '--value', default=False, type=int_or_float,  help='metric value to send, must be int or \
+                       float ')
     group.add_argument('-P', '--plugin', default=False,  help='call plugin to collect metric data')
+    group.add_argument('-S', '--script', default=False, help='get value from script outpout')
     parser.epilog = 'metric must be in standard collectd format e.g.  hostname.stats.command.[time|data]'
     args = parser.parse_args()
+    if args.value is not False and args.daemon is True:
+        parser.error('Can not run in Daemon mode with fixed value, use Script or Plugin mode')
     return args
 
 
@@ -46,7 +51,6 @@ def get_command_output(command):
 def send_data(metric, data, server, port, retry_interval=5, verbose=False):
     send_data = create_carbon_data(metric, data)
     sock = socket.socket()
-    print "creating socket"
     while True:
         try:
             sock.connect((server, port))
@@ -57,7 +61,6 @@ def send_data(metric, data, server, port, retry_interval=5, verbose=False):
         except socket.error:
             print "Could not connect to {0}:{1}, retrying".format(server, port)
             sleep(float(retry_interval))
-    print "closing socket"
     sock.close()
 
 
@@ -92,10 +95,20 @@ def create_carbon_data(metric, data):
     return "{0} {1} {2}".format(_validate_metric(metric), data,  int(time()))
 
 
+def run_script(script):
+    if path.isfile(script.split()[0]):
+        data = commands.getoutput(script)
+    else:
+        raise IOError('file {} not found'.format(script))
+    return data
+
+
 def create_data(args):
     if args.plugin is True:
         include_plugin()
-    else:
+    elif args.script is not False:
+        data = run_script(args.script)
+    elif args.value is not False:
         data = args.value
     return data
 
@@ -119,7 +132,7 @@ def main():
             sleep(args.interval)
     else:
         data = create_data(args)
-        send_data(args.metric, data, args.server, args.port, args.verbose)
+        send_data(args.metric, data, args.server, args.port, args.interval, args.verbose)
 
 
 if __name__ == "__main__": main()  # noqa allow 2 satements on the same line
